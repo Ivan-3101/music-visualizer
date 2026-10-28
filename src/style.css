@@ -1,0 +1,15 @@
+/* Full-window dark canvas: the visualizer will fill the whole screen. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #05060a;
+  color: #e6e8ef;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+#app {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}

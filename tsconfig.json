@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    // Which JavaScript version to target. ES2022 runs in every modern browser.
+    "target": "ES2022",
+    // Built-in type definitions: modern JS + browser APIs (DOM, Web Audio, canvas).
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // Types for Vite-specific features, e.g. importing a .css file from TS.
+    "types": ["vite/client"],
+
+    // Use modern import/export, and resolve imports the way a bundler like Vite does.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // Vite compiles each file on its own; this flags code that would break that.
+    "verbatimModuleSyntax": true,
+
+    // tsc only type-checks. Vite does the actual compiling.
+    "noEmit": true,
+    // Don't type-check library code in node_modules (faster; it's not ours to fix).
+    "skipLibCheck": true,
+
+    // Strictness: catch mistakes at compile time instead of in the browser.
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  // Only check our source code.
+  "include": ["src"]
+}

@@ -1,0 +1,32 @@
+# Dependencies: npm downloads these from package.json, so they never go in git
+node_modules/
+
+# Build output: Vite generates this from src/ on every build
+dist/
+
+# Personal files that must never be public
+*.pdf
+
+# Music files: copyrighted, and large
+*.mp3
+*.wav
+*.flac
+*.ogg
+*.m4a
+*.aac
+
+# Secrets and local deploy settings
+.env
+.env.*
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS clutter
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
