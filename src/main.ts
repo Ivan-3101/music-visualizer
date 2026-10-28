@@ -1,8 +1,108 @@
 import "./style.css";
+import { AudioEngine } from "./audio/AudioEngine";
+import { Spectrum } from "./audio/spectrum";
+import { DebugBars } from "./debug/DebugBars";
 
-const app = document.querySelector<HTMLDivElement>("#app");
-if (!app) {
-  throw new Error("#app element not found in index.html");
+function getElement<T extends HTMLElement>(selector: string): T {
+  const element = document.querySelector<T>(selector);
+  if (!element) throw new Error(`${selector} not found in index.html`);
+  return element;
 }
 
-app.innerHTML = `<h1>Music Visualizer</h1>`;
+const fileInput = getElement<HTMLInputElement>("#file-input");
+const playButton = getElement<HTMLButtonElement>("#play-button");
+const captureButton = getElement<HTMLButtonElement>("#capture-button");
+const status = getElement<HTMLSpanElement>("#status");
+
+let engine: AudioEngine | null = null;
+let spectrum: Spectrum | null = null;
+let debugBars: DebugBars | null = null;
+let fileName = "";
+let lastFrameTime = 0;
+
+// Created on the first user action, not on page load: browsers block audio
+// until the user has interacted with the page.
+function getEngine(): AudioEngine {
+  if (!engine) {
+    engine = new AudioEngine();
+    engine.onChange = render;
+    spectrum = new Spectrum(engine.context.sampleRate, engine.analyser.fftSize);
+    debugBars = new DebugBars();
+    document.body.append(debugBars.canvas);
+    requestAnimationFrame(frame);
+  }
+  return engine;
+}
+
+/** time: milliseconds since page load, passed in by requestAnimationFrame. */
+function frame(time: number): void {
+  // Capped so a long pause (e.g. a background tab) doesn't cause one giant jump.
+  const dt = lastFrameTime ? Math.min((time - lastFrameTime) / 1000, 0.1) : 0;
+  lastFrameTime = time;
+
+  if (engine && spectrum && debugBars) {
+    engine.update();
+    spectrum.update(engine.frequencyDb, dt);
+    debugBars.draw(spectrum.levels);
+  }
+  requestAnimationFrame(frame);
+}
+
+/** Updates buttons and status text from the engine's current state. */
+function render(): void {
+  const source = engine?.source ?? "none";
+  const playing = engine?.isPlaying ?? false;
+
+  playButton.disabled = source !== "file";
+  playButton.textContent = source === "file" && playing ? "Pause" : "Play";
+  captureButton.textContent = source === "capture" ? "Stop capture" : "Capture audio";
+
+  status.classList.remove("error");
+  if (source === "file") status.textContent = `${playing ? "Playing" : "Paused"}: ${fileName}`;
+  else if (source === "capture") status.textContent = "Capturing shared audio";
+  else status.textContent = "Load a file or capture audio to start";
+}
+
+function showError(error: unknown): void {
+  // The user closing the share dialog is not really an error.
+  const cancelled = error instanceof DOMException && error.name === "NotAllowedError";
+  status.textContent = cancelled ? "Capture cancelled" : error instanceof Error ? error.message : String(error);
+  status.classList.toggle("error", !cancelled);
+}
+
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files?.[0];
+  fileInput.value = ""; // so picking the same file again still fires "change"
+  if (!file) return;
+
+  fileName = file.name;
+  try {
+    await getEngine().loadFile(file);
+    render();
+  } catch (error) {
+    render();
+    showError(error);
+  }
+});
+
+playButton.addEventListener("click", async () => {
+  const audio = getEngine();
+  try {
+    if (audio.isPlaying) audio.pause();
+    else await audio.play();
+  } catch (error) {
+    showError(error);
+  }
+});
+
+captureButton.addEventListener("click", async () => {
+  const audio = getEngine();
+  try {
+    if (audio.source === "capture") audio.stopCapture();
+    else await audio.startCapture();
+    render();
+  } catch (error) {
+    render();
+    showError(error);
+  }
+});

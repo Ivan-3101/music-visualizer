@@ -13,3 +13,62 @@ body {
   display: grid;
   place-items: center;
 }
+
+/* Temporary control bar (replaced by the real UI in Phase 7). */
+.controls {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.button {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.status {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.status.error {
+  color: #ff6b6b;
+  opacity: 1;
+}
+
+.debug-bars {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 360px;
+  height: auto; /* keeps the canvas's aspect ratio when max-width shrinks it */
+  max-width: calc(100% - 32px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}

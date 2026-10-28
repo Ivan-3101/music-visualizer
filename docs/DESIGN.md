@@ -42,6 +42,7 @@
 | Module | Responsibility |
 |---|---|
 | AudioEngine | Owns the `AudioContext`, connects the active source to an `AnalyserNode`, exposes the FFT arrays |
+| spectrum | Shapes raw FFT decibels into 64 log-spaced bar levels (0–1): tilt, auto-gain, fast-attack/slow-fall |
 | features | Pure functions: raw FFT → `bass`, `mid`, `treble`, `energy`, `beat`. Unit tested. |
 | SceneManager | Three.js scene, camera, renderer, resize handling, bloom post-processing |
 | Visualizers | Pluggable 3D modes implementing one interface |
@@ -65,7 +66,7 @@ interface AudioFeatures {
   treble: number;        // 0..1
   energy: number;        // 0..1
   beat: boolean;         // true on the frame a beat hits
-  spectrum: Uint8Array;  // raw FFT
+  spectrum: Float32Array; // Spectrum.levels: 64 log-spaced bars, 0..1
   waveform: Uint8Array;  // raw time-domain samples
 }
 ```
@@ -74,11 +75,12 @@ interface AudioFeatures {
 
 ```
 requestAnimationFrame (~60/sec)
-  1. AudioEngine  → analyser.getByteFrequencyData(array)
-  2. features     → computeFeatures(array, dt)
-  3. visualizer   → update(features, dt)
-  4. DebugBars    → draw(array)   (if enabled)
-  5. SceneManager → render()
+  1. AudioEngine  → analyser.getFloatFrequencyData(frequencyDb)
+  2. Spectrum     → update(frequencyDb, dt) → levels (64 bars, 0..1)
+  3. features     → computeFeatures(levels, dt)
+  4. visualizer   → update(features, dt)
+  5. DebugBars    → draw(levels)   (if enabled)
+  6. SceneManager → render()
 ```
 
 `dt` = seconds since the last frame. All motion and smoothing scale by `dt` so they behave the same at 60Hz and 144Hz.
@@ -99,14 +101,21 @@ requestAnimationFrame (~60/sec)
 | Mid | 250–4000 Hz |
 | Treble | 4000–16000 Hz (capped: MP3s carry little above 16kHz) |
 
-Each band gets its own gain so all three use the full 0–1 range.
+**Spectrum shaping (`spectrum.ts`).** We read real decibels with `getFloatFrequencyData`. The 0–255 byte version squashes everything into a fixed −100…−30 dB window, where each bar only moved ~15% of its height. Steps, per frame:
 
-**Smoothing (frame-rate independent):**
+1. **Log-spaced bars:** 64 bars from 20 Hz to 16 kHz, each taking the loudest bin in its range.
+2. **Tilt:** +3 dB/octave above 1 kHz (−3 below), flattening music's natural high-frequency roll-off so treble is visible.
+3. **Auto-gain:** a ceiling follows the loudest bar (up instantly, down 4 dB/s, never below −60 dB); bars show the 40 dB below it. Quiet tracks or low Spotify volume still fill the range.
+4. **Fast attack, slow fall:** bars rise instantly and fall at 1.5 heights/s. The analyser's own smoothing is 0.5 so kick drums stay punchy.
+
+Measured on Seven Nation Army: bar swing went from ~15% to 23–49% of the height, and 25% playback volume gave nearly identical bars.
+
+**Smoothing for features (frame-rate independent):**
 ```
 value += (target - value) * (1 - Math.exp(-speed * dt))
 ```
 
-**Beat detection:** `getByteFrequencyData` returns decibel-scaled (log) values, so we compare *differences* from a ~1s running average of bass (not ratios), with a ~250ms cooldown. Thresholds are tuned against real music using the debug bars.
+**Beat detection:** compare bass *differences* in dB from a ~1s running average (not ratios, since dB is already a log scale), with a ~250ms cooldown. Thresholds are tuned against real music using the debug bars.
 
 **Autoplay rule:** browsers block audio until the user interacts, so the `AudioContext` is created or resumed on the first click.
 
@@ -146,7 +155,7 @@ music-visualizer/
 └─ src/
    ├─ main.ts
    ├─ style.css
-   ├─ audio/        AudioEngine.ts, features.ts, features.test.ts
+   ├─ audio/        AudioEngine.ts, spectrum.ts, features.ts, features.test.ts
    ├─ scene/        SceneManager.ts
    ├─ visualizers/  Visualizer.ts, PulseSphere.ts, SpectrumRing.ts, ParticleField.ts
    ├─ debug/        DebugBars.ts

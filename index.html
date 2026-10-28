@@ -3,10 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Music Visualizer</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <h1>Music Visualizer</h1>
+    </div>
+
+    <div class="controls">
+      <label class="button">
+        Load file
+        <input id="file-input" type="file" accept="audio/*" hidden />
+      </label>
+      <button id="play-button" class="button" disabled>Play</button>
+      <button id="capture-button" class="button">Capture audio</button>
+      <span id="status" class="status">Load a file or capture audio to start</span>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
