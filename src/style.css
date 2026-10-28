@@ -8,10 +8,14 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Full-screen container for the 3D canvas; the UI floats on top of it. */
 #app {
-  height: 100%;
-  display: grid;
-  place-items: center;
+  position: fixed;
+  inset: 0;
+}
+
+#app canvas {
+  display: block; /* canvases are inline by default, which adds a stray gap below */
 }
 
 /* Temporary control bar (replaced by the real UI in Phase 7). */

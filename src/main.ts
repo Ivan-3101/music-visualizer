@@ -1,7 +1,9 @@
 import "./style.css";
+import * as THREE from "three";
 import { AudioEngine } from "./audio/AudioEngine";
 import { Spectrum } from "./audio/spectrum";
 import { DebugBars } from "./debug/DebugBars";
+import { SceneManager } from "./scene/SceneManager";
 
 function getElement<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -13,6 +15,20 @@ const fileInput = getElement<HTMLInputElement>("#file-input");
 const playButton = getElement<HTMLButtonElement>("#play-button");
 const captureButton = getElement<HTMLButtonElement>("#capture-button");
 const status = getElement<HTMLSpanElement>("#status");
+
+const sceneManager = new SceneManager(getElement<HTMLDivElement>("#app"));
+
+// Temporary demo content for Phase 3; replaced by visualizers in Phase 4.
+// A mesh = geometry (the shape) + material (how the surface reacts to light).
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.35, metalness: 0.2 }),
+);
+sceneManager.scene.add(cube);
+// Faint floor grid (10×10 units) so you can tell which way is down while orbiting.
+const grid = new THREE.GridHelper(10, 10, 0x334155, 0x1e293b);
+grid.position.y = -1.5;
+sceneManager.scene.add(grid);
 
 let engine: AudioEngine | null = null;
 let spectrum: Spectrum | null = null;
@@ -29,7 +45,6 @@ function getEngine(): AudioEngine {
     spectrum = new Spectrum(engine.context.sampleRate, engine.analyser.fftSize);
     debugBars = new DebugBars();
     document.body.append(debugBars.canvas);
-    requestAnimationFrame(frame);
   }
   return engine;
 }
@@ -45,8 +60,15 @@ function frame(time: number): void {
     spectrum.update(engine.frequencyDb, dt);
     debugBars.draw(spectrum.levels);
   }
+
+  // Radians per second × seconds elapsed: same speed at any frame rate.
+  cube.rotation.x += 0.3 * dt;
+  cube.rotation.y += 0.6 * dt;
+
+  sceneManager.render();
   requestAnimationFrame(frame);
 }
+requestAnimationFrame(frame);
 
 /** Updates buttons and status text from the engine's current state. */
 function render(): void {
