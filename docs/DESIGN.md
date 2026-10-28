@@ -67,7 +67,6 @@ interface AudioFeatures {
   energy: number;        // 0..1
   beat: boolean;         // true on the frame a beat hits
   spectrum: Float32Array; // Spectrum.levels: 64 log-spaced bars, 0..1
-  waveform: Uint8Array;  // raw time-domain samples
 }
 ```
 
@@ -115,7 +114,15 @@ Measured on Seven Nation Army: bar swing went from ~15% to 23–49% of the heigh
 value += (target - value) * (1 - Math.exp(-speed * dt))
 ```
 
-**Beat detection:** compare bass *differences* in dB from a ~1s running average (not ratios, since dB is already a log scale), with a ~250ms cooldown. Thresholds are tuned against real music using the debug bars.
+**Bands (`features.ts`):** bass, mid and treble are averages of the shaped bar levels in each band (bar ranges computed from `barToHz`: 25 / 26 / 13 bars), then smoothed with the formula above.
+
+**Beat detection:** a beat fires when the raw (unsmoothed) bass:
+1. is **rising** (an onset, not a steady level; otherwise a steady level fires repeatedly while the average warms up after silence);
+2. is **0.10 above** its ~1s exponential running average (≈ 4 dB, a *difference*, since the levels are already on a dB scale);
+3. is above 0.25 (near-silence never triggers);
+4. comes **≥ 250 ms** after the previous beat.
+
+Tuned on Seven Nation Army (~2.07 beats/s): 0.10 gave 1.9–2.0/s in the intro, 2.3/s in the verse and 1.9/s in the chorus. 0.12 missed ~25% of chorus kicks; 0.08 over-triggered everywhere. Covered by unit tests in `features.test.ts`.
 
 **Autoplay rule:** browsers block audio until the user interacts, so the `AudioContext` is created or resumed on the first click.
 
