@@ -5,6 +5,7 @@ import { Spectrum } from "./audio/spectrum";
 import { DebugBars } from "./debug/DebugBars";
 import { SceneManager } from "./scene/SceneManager";
 import { PulseSphere } from "./visualizers/PulseSphere";
+import { PulseSphereCPU } from "./visualizers/PulseSphereCPU";
 import type { Visualizer } from "./visualizers/Visualizer";
 
 function getElement<T extends HTMLElement>(selector: string): T {
@@ -20,7 +21,9 @@ const status = getElement<HTMLSpanElement>("#status");
 
 const sceneManager = new SceneManager(getElement<HTMLDivElement>("#app"));
 
-const visualizer: Visualizer = new PulseSphere();
+// ?cpu in the URL picks the CPU version of the sphere, for comparison.
+const useCpu = new URLSearchParams(location.search).has("cpu");
+const visualizer: Visualizer = useCpu ? new PulseSphereCPU() : new PulseSphere();
 visualizer.init(sceneManager.scene);
 
 let engine: AudioEngine | null = null;

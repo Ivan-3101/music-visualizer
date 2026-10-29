@@ -144,6 +144,27 @@ Dark blue-black background, glowing colors (bloom), slowly orbiting camera. A mi
 └──────────────────────────────────────────────────┘
 ```
 
+**Rendering (Phase 5a)**
+- **Pulse Sphere runs in a GPU shader** (`ShaderMaterial`). The vertex shader displaces each vertex with 3D simplex noise (Ashima Arts, MIT) and recomputes the normal from two nearby displaced points. The fragment shader does its own lighting: diffuse, a small specular, and a Fresnel rim whose brightness rises with energy. JavaScript only sets uniforms each frame. `?cpu` loads the CPU version for comparison.
+- **Bloom:** `EffectComposer` → `RenderPass` → `UnrealBloomPass` (half resolution) → `OutputPass` → `FXAAPass` (with dithering added to its shader).
+- **Dithering:** the dark, gradual glow showed visible bands (the screen has only 256 steps per channel). The last pass adds per-pixel noise smaller than one step (interleaved gradient noise) so neighbouring pixels round differently and the bands blend. It's built into the FXAA pass because a separate full-screen pass costs ~20 fps on integrated GPUs. Only the loud rim crosses the threshold (0.55), so the glow itself reacts to the music.
+- **Background via `scene.background`, not `renderer.setClearColor`:** the clear color is converted once for the screen (sRGB) and then reused for the off-screen bloom image, which `OutputPass` converts again (near-black became grey).
+- **Performance on the baseline GPU (Intel Iris Xe, 1920×1080):**
+
+  | Step | FPS |
+  |---|---|
+  | No post-processing | 145 |
+  | Bloom added (full resolution) | 45–49 |
+  | Bloom at half resolution | 72–75 |
+  | Canvas antialiasing off (wasted with post-processing) | 80–83 |
+  | + FXAA pass (edges were visibly jagged without it) | **60–62** |
+
+  MSAA on all of the composer's off-screen images was also tried: smoother than FXAA but 39–44 fps (2 samples was no faster than 4). MSAA on the scene only (its own multisampled target, fed into the chain with a `TexturePass`) was crisper than FXAA at ~50 fps.
+
+  **Phase 7 quality setting:** "high" = scene-only MSAA, higher render resolution (up to 4K) and full-resolution bloom, for strong GPUs like an RTX 3060; "low" = no FXAA and smaller bloom for weak ones. A web page can't pick the GPU (`powerPreference` is ignored on Windows); the browser decides, set via Windows graphics settings.
+
+  CPU vs GPU sphere (before bloom, 1280×720): CPU 6k vertices = 3.6–4.0 ms JS/frame; GPU 42k vertices = 0.7–0.9 ms. An RTX 3060 runs everything at 144+.
+
 **Modes**
 1. **Pulse Sphere:** surface bulges with bass, color shifts with treble, kicks outward on beats. Built on the CPU first, then rewritten as a GPU shader.
 2. **Spectrum Ring:** 64 bars in a 3D circle, camera orbiting.
@@ -164,7 +185,7 @@ music-visualizer/
    ├─ style.css
    ├─ audio/        AudioEngine.ts, spectrum.ts, features.ts, features.test.ts
    ├─ scene/        SceneManager.ts
-   ├─ visualizers/  Visualizer.ts, PulseSphere.ts, SpectrumRing.ts, ParticleField.ts
+   ├─ visualizers/  Visualizer.ts, PulseSphere.ts (GPU), PulseSphereCPU.ts, SpectrumRing.ts, ParticleField.ts
    ├─ debug/        DebugBars.ts
    └─ ui/           Controls.ts
 ```
